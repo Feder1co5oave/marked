@@ -10,26 +10,29 @@
  * Modules
  */
 
-var fs = require('fs')
-  , path = require('path')
-  , fm = require('front-matter')
-  , g2r = require('glob-to-regexp')
-  , marked = require('../');
+var fs = require('fs'),
+    path = require('path'),
+    fm = require('front-matter'),
+    g2r = require('glob-to-regexp'),
+    HtmlDiffer = require('html-differ').HtmlDiffer,
+    htmlDiffer = new HtmlDiffer(),
+    diffLogger = require('html-differ/lib/logger'),
+    marked = require('../');
 
 /**
  * Load Tests
  */
 
 function load(options) {
-  var dir = __dirname + '/compiled_tests'
-    , files = {}
-    , list
-    , file
-    , name
-    , content
-    , glob = g2r(options.glob || '*', { extended: true })
-    , i
-    , l;
+  var dir = path.join(__dirname, 'compiled_tests'),
+      files = {},
+      list,
+      file,
+      name,
+      content,
+      glob = g2r(options.glob || '*', { extended: true }),
+      i,
+      l;
 
   list = fs
     .readdirSync(dir)
@@ -58,7 +61,7 @@ function load(options) {
     if (!options.glob) {
       // Change certain tests to allow
       // comparison to older benchmark times.
-      fs.readdirSync(__dirname + '/new').forEach(function(name) {
+      fs.readdirSync(path.join(__dirname, 'new')).forEach(function(name) {
         if (path.extname(name) === '.html') return;
         if (name === 'main.md') return;
         delete files[name];
@@ -89,77 +92,89 @@ function runTests(engine, options) {
     engine = marked;
   }
 
+  engine = engine || marked;
   options = options || {};
-
-  var HtmlDiffer = require('html-differ').HtmlDiffer
-    , htmlDiffer = new HtmlDiffer()
-    , diffLogger = require('html-differ/lib/logger')
-    , files = options.files || load(options)
-    , complete = 0
-    , failed = 0
-    , failures = []
-    , keys = Object.keys(files)
-    , i = 0
-    , len = keys.length
-    , filename
-    , file
-    , opts
-    , text
-    , html
-    , diff;
+  var succeeded = 0,
+      failed = 0,
+      files = options.files || load(options),
+      filenames = Object.keys(files),
+      len = filenames.length,
+      success,
+      i,
+      filename,
+      file;
 
   if (options.marked) {
     marked.setOptions(options.marked);
   }
 
-  for (; i < len; i++) {
-    filename = keys[i];
+  for (i = 0; i < len; i++) {
+    filename = filenames[i];
     file = files[filename];
-    opts = Object.keys(file.options);
-
-    if (marked._original) {
-      marked.defaults = marked._original;
-      delete marked._original;
-    }
-
-    if (opts.length) {
-      marked._original = marked.defaults;
-      marked.defaults = {};
-      Object.keys(marked._original).forEach(function(key) {
-        marked.defaults[key] = marked._original[key];
-      });
-      opts.forEach(function(key) {
-        if (marked.defaults.hasOwnProperty(key)) {
-          marked.defaults[key] = file.options[key];
-        }
-      });
-    }
-
-    try {
-      text = engine(file.text);
-      html = file.html;
-    } catch (e) {
-      console.log('%s failed.', filename);
-      throw e;
-    }
-
-    diff = htmlDiffer.diffHtml(text, html);
-    if (!htmlDiffer.isEqual(text, html)) {
-      failed++;
-      failures.push(filename);
-      console.log('#%d. %s failed.', i + 1, filename);
-      diffLogger.logDiffText(diff);
-      if (options.stop) break;
+    success = testFile(engine, file, filename, i + 1);
+    if (success) {
+      succeeded++;
     } else {
-      complete++;
-      console.log('#%d. %s completed.', i + 1, filename);
+      failed++;
+      if (options.stop) {
+        break;
+      }
     }
   }
 
-  console.log('\n%d/%d tests completed successfully.', complete, len);
+  console.log('\n%d/%d tests completed successfully.', succeeded, len);
   if (failed) console.log('%d/%d tests failed.', failed, len);
 
   return !failed;
+}
+
+/**
+ * Test a file
+ */
+
+function testFile(engine, file, filename, index) {
+  var opts = Object.keys(file.options),
+      text,
+      html,
+      diff,
+      j,
+      l;
+
+  if (marked._original) {
+    marked.defaults = marked._original;
+    delete marked._original;
+  }
+
+  if (opts.length) {
+    marked._original = marked.defaults;
+    marked.defaults = {};
+    Object.keys(marked._original).forEach(function(key) {
+      marked.defaults[key] = marked._original[key];
+    });
+    opts.forEach(function(key) {
+      if (marked.defaults.hasOwnProperty(key)) {
+        marked.defaults[key] = file.options[key];
+      }
+    });
+  }
+
+  try {
+    text = engine(file.text);
+    html = file.html;
+  } catch (e) {
+    console.log('%s failed.', filename);
+    throw e;
+  }
+
+  diff = htmlDiffer.diffHtml(text, html);
+  if (!htmlDiffer.isEqual(text, html)) {
+    console.log('#%d. %s failed.', index, filename);
+    diffLogger.logDiffText(diff);
+    return false;
+  } else {
+    console.log('#%d. %s completed.', index, filename);
+    return true;	
+  }
 }
 
 /**
@@ -167,13 +182,13 @@ function runTests(engine, options) {
  */
 
 function bench(name, files, func) {
-  var start = Date.now()
-    , times = 1000
-    , keys = Object.keys(files)
-    , i
-    , l = keys.length
-    , filename
-    , file;
+  var start = Date.now(),
+      times = 1000,
+      keys = Object.keys(files),
+      i,
+      l = keys.length,
+      filename,
+      file;
 
   while (times--) {
     for (i = 0; i < l; i++) {
@@ -191,7 +206,7 @@ function bench(name, files, func) {
  */
 
 function runBench(options) {
-  options = options || {}
+  options = options || {};
   var files = load(options);
 
   // Non-GFM, Non-pedantic
@@ -289,8 +304,8 @@ function runBench(options) {
  */
 
 function time(options) {
-  var options = options || {}
-    , files = load(options);
+  options = options || {};
+  var files = load(options);
   if (options.marked) {
     marked.setOptions(options.marked);
   }
@@ -333,7 +348,7 @@ function fix() {
   });
 
   // node fix.js
-  var dir = __dirname + '/compiled_tests';
+  var dir = path.join(__dirname, 'compiled_tests');
 
   fs.readdirSync(dir).filter(function(file) {
     return path.extname(file) === '.html';
@@ -359,7 +374,7 @@ function fix() {
         .replace(/&lt;/g, '<')
         .replace(/&amp;/g, '&');
 
-      id = id.toLowerCase().replace(/[^\w]+/g, '-');
+      id = id.toLowerCase().replace(/[^\w]+/g, '-');
 
       return '<' + h + ' id="' + id + '">' + text + '</' + h + '>';
     });
@@ -369,8 +384,8 @@ function fix() {
 
   // turn <hr /> into <hr>
   fs.readdirSync(dir).forEach(function(file) {
-    var file = path.join(dir, file)
-      , text = fs.readFileSync(file, 'utf8');
+    file = path.join(dir, file);
+    var text = fs.readFileSync(file, 'utf8');
 
     text = text.replace(/(<|&lt;)hr\s*\/(>|&gt;)/g, '$1hr$2');
 
@@ -398,12 +413,12 @@ function fix() {
  * Argument Parsing
  */
 
-function parseArg(argv) {
-  argv = process.argv.slice(2)
-  var options = {}
-    , opt = ''
-    , orphans = []
-    , arg;
+function parseArg() {
+  var argv = process.argv.slice(2),
+      options = {},
+      opt = '',
+      orphans = [],
+      arg;
 
   function getarg() {
     var arg = argv.shift();
