@@ -4,7 +4,6 @@ node_js:
   - "4"
   - "lts/*"
 script: |
-  set -ev
   if [ `node --version | cut -d . -f 1,2` = "v0.10" ]; then
     sed -i s/0o755/0755/ test/index.js;
     npm test;
