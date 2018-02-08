@@ -5,10 +5,9 @@ node_js:
   - "lts/*"
 script: |
   set -ev
-  if [ `node --version | cut -d 2 -f 1,2` = \"v0.10\" ]; then
-    npm run lint;
+  if [ `node --version | cut -d . -f 1,2` = "v0.10" ]; then
     sed -i s/0o755/0755/ test/index.js;
-    npm test
+    npm test;
   else
     npm run lint && npm test;
   fi
