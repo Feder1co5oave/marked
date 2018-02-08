@@ -11,3 +11,6 @@ script: |
   else
     npm run lint && npm test;
   fi
+cache:
+  directories:
+    - node_modules
