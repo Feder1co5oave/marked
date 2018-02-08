@@ -136,9 +136,7 @@ function testFile(engine, file, filename, index) {
   var opts = Object.keys(file.options),
       text,
       html,
-      diff,
-      j,
-      l;
+      diff;
 
   if (marked._original) {
     marked.defaults = marked._original;
@@ -173,7 +171,7 @@ function testFile(engine, file, filename, index) {
     return false;
   } else {
     console.log('#%d. %s completed.', index, filename);
-    return true;	
+    return true;
   }
 }
 
