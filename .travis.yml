@@ -3,3 +3,12 @@ node_js:
   - "0.10"
   - "4"
   - "lts/*"
+script: |
+  set -ev
+  if [ `node --version | cut -d 2 -f 1,2` = \"v0.10\" ]; then
+    npm run lint;
+    sed -i s/0o755/0755/ test/index.js;
+    npm test
+  else
+    npm run lint && npm test;
+  fi
