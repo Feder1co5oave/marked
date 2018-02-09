@@ -17,7 +17,8 @@ var fs = require('fs'),
     HtmlDiffer = require('html-differ').HtmlDiffer,
     htmlDiffer = new HtmlDiffer(),
     diffLogger = require('html-differ/lib/logger'),
-    marked = require('../');
+    marked = require('../'),
+    markedMin = require('../marked.min.js');
 
 /**
  * Load Tests
@@ -472,6 +473,10 @@ function parseArg() {
       case '--time':
         options.time = true;
         break;
+      case '-m':
+      case '--minified':
+        options.minified = true;
+        break;
       case '--glob':
         arg = argv.shift();
         options.glob = arg.replace(/^=/, '');
@@ -536,6 +541,9 @@ function main(argv) {
     return time(opt);
   }
 
+  if (opt.minified) {
+    marked = markedMin;
+  }
   return runTests(opt);
 }
 
