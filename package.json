@@ -35,6 +35,7 @@
     "glob-to-regexp": "0.3.0",
     "markdown": "*",
     "markdown-it": "*",
+    "selenium-webdriver": "^4.0.0-alpha.1",
     "showdown": "*",
     "uglify-js": "^3.3.10"
   },
@@ -44,7 +45,8 @@
     "lint": "eslint --fix lib/marked.js test/index.js",
     "build": "uglifyjs lib/marked.js -cm  --comments /Copyright/ -o marked.min.js",
     "preversion": "npm run build",
-    "bundle": "node test --fix && browserify test/browser/test.js -t brfs -o test/browser/bundle.js"
+    "bundle": "node test --fix && browserify test/browser/test.js -t brfs -o test/browser/bundle.js",
+    "test_ie": "npm run bundle && node test/browserstack"
   },
   "engines": {
     "node": ">=0.10.0"
