@@ -1,7 +1,5 @@
 language: node_js
 node_js:
-  - "0.10"
-  - "4"
   - "lts/*"
   - "node"
 script: |
@@ -9,8 +7,12 @@ script: |
     sed -i s/0o755/0755/ test/index.js;
     npm test;
   else
-    npm run lint && npm test;
+    npm run test_ie;
   fi
 cache:
   directories:
     - node_modules
+addons:
+  browserstack:
+    username: "fredsoave1"
+    access_key: "7jAkFfaCgZKuaoMt1SxW"
