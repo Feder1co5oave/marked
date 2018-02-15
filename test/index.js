@@ -23,60 +23,23 @@ var fs = require('fs'),
 
 function load(options) {
   options = options || {};
-  var dir = path.join(__dirname, 'compiled_tests'),
-      files = {},
-      list,
-      file,
-      name,
-      content,
-      glob = g2r(options.glob || '*', { extended: true }),
-      i,
-      l;
+  var compiled = path.join(__dirname, 'compiled_tests.json'),
+      files,
+      glob = g2r(options.glob || '*', { extended: true });
 
-  list = fs
-    .readdirSync(dir)
-    .filter(function(file) {
-      return path.extname(file) === '.md';
-    })
-    .sort();
+  files = JSON.parse(fs.readFileSync(compiled, 'utf8'));
 
-  l = list.length;
-
-  for (i = 0; i < l; i++) {
-    name = path.basename(list[i], '.md');
-    if (glob.test(name)) {
-      file = path.join(dir, list[i]);
-      content = fm(fs.readFileSync(file, 'utf8'));
-
-      files[name] = {
-        options: content.attributes,
-        text: content.body,
-        html: fs.readFileSync(file.replace(/[^.]+$/, 'html'), 'utf8')
-      };
-    }
+  if (options.glob) {
+    files = files.filter(function(test) {
+      return glob.test(test.section);
+    });
   }
 
-  if (options.bench || options.time) {
-    if (!options.glob) {
-      // Change certain tests to allow
-      // comparison to older benchmark times.
-      fs.readdirSync(path.join(__dirname, 'new')).forEach(function(name) {
-        if (path.extname(name) === '.html') return;
-        if (name === 'main.md') return;
-        delete files[name];
-      });
-    }
-
-    if (files['backslash_escapes.md']) {
-      files['backslash_escapes.md'] = {
-        text: 'hello world \\[how](are you) today'
-      };
-    }
-
-    if (files['main.md']) {
-      files['main.md'].text = files['main.md'].text.replace('* * *\n\n', '');
-    }
-  }
+  files.sort(function(a, b) {
+    if (a.section < b.section) return -1;
+    else if (a.section > b.section) return 1;
+    else return a.example - b.example;
+  });
 
   return files;
 }
@@ -95,34 +58,42 @@ function runTests(engine, options) {
   options = options || {};
   var succeeded = 0,
       failed = 0,
-      files = options.files || load(options),
-      filenames = Object.keys(files),
-      len = filenames.length,
-      success,
+      tests = options.files || load(options),
+      test,
+      testName,
+      len = tests.length,
+      success = true,
       i,
-      filename,
-      file;
+      index = 1,
+      oldSection = tests[0].section;
 
   if (options.marked) {
     marked.setOptions(options.marked);
   }
 
   for (i = 0; i < len; i++) {
-    filename = filenames[i];
-    file = files[filename];
-    success = testFile(engine, file, filename, i + 1);
-    if (success) {
-      succeeded++;
-    } else {
-      failed++;
-      if (options.stop) {
-        break;
+    test = tests[i];
+    testName = test.section + (test.example >= 1000 ? '' : '#' + test.example);
+    if (test.section !== oldSection) {
+      if (success) {
+        console.log('#%d. %s succeded.', index, oldSection);
+        succeeded++;
+      } else {
+        console.log('#%d. %s failed.', index, oldSection);
+        failed++;
+        if (options.stop) {
+          break;
+        }
       }
+      index++;
+      success = true;
+      oldSection = test.section;
     }
+    success &= testFile(engine, test, testName);
   }
 
-  console.log('%d/%d tests completed successfully.', succeeded, len);
-  if (failed) console.log('%d/%d tests failed.', failed, len);
+  console.log('%d/%d tests completed successfully.', succeeded, index - 1);
+  if (failed) console.log('%d/%d tests failed.', failed, index - 1);
 
   return !failed;
 }
@@ -131,7 +102,7 @@ function runTests(engine, options) {
  * Test a file
  */
 
-function testFile(engine, file, filename, index) {
+function testFile(engine, file, filename) {
   var opts = Object.keys(file.options),
       text,
       html,
@@ -157,12 +128,14 @@ function testFile(engine, file, filename, index) {
   }
 
   try {
-    text = engine(file.text).replace(/\s/g, '');
+    text = engine(file.markdown).replace(/\s/g, '');
     html = file.html.replace(/\s/g, '');
   } catch (e) {
     console.log('%s failed.', filename);
     throw e;
   }
+
+  if (text === html) return true;
 
   l = html.length;
 
@@ -177,17 +150,16 @@ function testFile(engine, file, filename, index) {
         Math.min(j + 30, l));
 
       console.log(
-        '\n#%d. %s failed at offset %d. Near: "%s".\n',
-        index, filename, j, text);
+        '\n    %s failed at offset %d. Near: "%s".',
+        filename, j, text);
 
-      console.log('\nGot:\n%s\n', text.trim() || text);
-      console.log('\nExpected:\n%s\n', html.trim() || html);
+      console.log('\n    Got:\n    %s', text.trim() || text);
+      console.log('\n    Expected:\n    %s\n', html.trim() || html);
 
       return false;
     }
   }
 
-  console.log('#%d. %s completed.', index, filename);
   return true
 }
 
@@ -339,90 +311,119 @@ function time(options) {
  */
 
 function fix() {
-  ['compiled_tests', 'original', 'new'].forEach(function(dir) {
-    try {
-      fs.mkdirSync(path.resolve(__dirname, dir), 0o755);
-    } catch (e) {
-      ;
-    }
-  });
+  var files = [],
+      id = 1000,
+      compiled = path.resolve(__dirname, 'compiled_tests.json');
 
-  // rm -rf tests
-  fs.readdirSync(path.resolve(__dirname, 'compiled_tests')).forEach(function(file) {
-    fs.unlinkSync(path.resolve(__dirname, 'compiled_tests', file));
-  });
-
-  // cp -r original tests
+  // parse original tests
   fs.readdirSync(path.resolve(__dirname, 'original')).forEach(function(file) {
-    var text = fs.readFileSync(path.resolve(__dirname, 'original', file));
-
-    if (path.extname(file) === '.md') {
-      text = '---\ngfm: false\n---\n' + text;
+    if (path.extname(file) !== '.md') { return; }
+    var markdown = fs.readFileSync(path.resolve(__dirname, 'original', file), 'utf8'),
+        name = path.basename(file, '.md'),
+        html,
+        options;
+    try {
+      html = fs.readFileSync(path.resolve(
+        __dirname,
+        'original',
+        name + '.html'
+      ), 'utf8');
+    } catch (ex) {
+      console.error('Cannot find original/%s.html', name);
+      return;
     }
-
-    fs.writeFileSync(path.resolve(__dirname, 'compiled_tests', file), text);
-  });
-
-  // node fix.js
-  var dir = path.join(__dirname, 'compiled_tests');
-
-  fs.readdirSync(dir).filter(function(file) {
-    return path.extname(file) === '.html';
-  }).forEach(function(file) {
-    file = path.join(dir, file);
-    var html = fs.readFileSync(file, 'utf8');
-
-    // fix unencoded quotes
-    html = html
-      .replace(/='([^\n']*)'(?=[^<>\n]*>)/g, '=&__APOS__;$1&__APOS__;')
+    html = html.replace(/<(h[1-6])>([^<]+)<\/\1>/g, function(s, h, text) {
+      var id = text.toLowerCase().replace(/[^\w]+/g, '-');
+      return '<' + h + ' id="' + id + '">' + text + '</' + h + '>';
+    }).replace(/='([^\n']*)'(?=[^<>\n]*>)/g, '=&__APOS__;$1&__APOS__;')
       .replace(/="([^\n"]*)"(?=[^<>\n]*>)/g, '=&__QUOT__;$1&__QUOT__;')
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#39;')
       .replace(/&__QUOT__;/g, '"')
       .replace(/&__APOS__;/g, '\'');
-
-    // add heading id's
-    html = html.replace(/<(h[1-6])>([^<]+)<\/\1>/g, function(s, h, text) {
-      var id = text
-        .replace(/&#39;/g, '\'')
-        .replace(/&quot;/g, '"')
-        .replace(/&gt;/g, '>')
-        .replace(/&lt;/g, '<')
-        .replace(/&amp;/g, '&');
-
-      id = id.toLowerCase().replace(/[^\w]+/g, '-');
-
-      return '<' + h + ' id="' + id + '">' + text + '</' + h + '>';
+    html = html.replace(/(<|&lt;)hr\s*\/(>|&gt;)/g, '$1hr$2');
+    markdown = fm(markdown);
+    options = markdown.attributes;
+    markdown = markdown.body;
+    markdown = markdown.replace(/(<|&lt;)hr\s*\/(>|&gt;)/g, '$1hr$2');
+    options.gfm = false;
+    files.push({
+      section: name,
+      markdown: markdown,
+      html: html,
+      options: options,
+      example: id++
     });
-
-    fs.writeFileSync(file, html);
   });
 
-  // turn <hr /> into <hr>
-  fs.readdirSync(dir).forEach(function(file) {
-    file = path.join(dir, file);
-    var text = fs.readFileSync(file, 'utf8');
-
-    text = text.replace(/(<|&lt;)hr\s*\/(>|&gt;)/g, '$1hr$2');
-
-    fs.writeFileSync(file, text);
-  });
-
-  // markdown does some strange things.
-  // it does not encode naked `>`, marked does.
-  (function() {
-    var file = dir + '/amps_and_angles_encoding.html';
-    var html = fs.readFileSync(file, 'utf8')
-      .replace('6 > 5.', '6 &gt; 5.');
-
-    fs.writeFileSync(file, html);
-  })();
-
-  // cp new/* tests/
+  // parse new tests
   fs.readdirSync(path.resolve(__dirname, 'new')).forEach(function(file) {
-    fs.writeFileSync(path.resolve(__dirname, 'compiled_tests', file),
-      fs.readFileSync(path.resolve(__dirname, 'new', file)));
+    if (path.extname(file) !== '.md') { return; }
+    var markdown = fs.readFileSync(path.resolve(__dirname, 'new', file), 'utf8'),
+        name = path.basename(file, '.md'),
+        html,
+        options,
+        subMd,
+        subHtml,
+        i,
+        l;
+    try {
+      html = fs.readFileSync(path.resolve(
+        __dirname,
+        'new',
+        name + '.html'
+      ), 'utf8');
+    } catch (ex) {
+      console.error('Cannot find new/%s.html', name);
+      return;
+    }
+    markdown = fm(markdown);
+    options = markdown.attributes;
+    markdown = markdown.body;
+
+    if (/^### Example \d+\n+/m.test(markdown)) {
+      subMd = markdown.split(/^### Example (\d+)\n+/m);
+      subHtml = html.split(/^<h3 (?:id="example-\d+")?>Example (\d+)<\/h3>\n+/m);
+      if (subMd.length !== subHtml.length) {
+        console.error('Non-matching subtests in %s', name);
+        return;
+      }
+
+      l = subMd.length;
+      if (subMd[0].trim()) {
+        files.push({
+          section: name,
+          markdown: subMd[0],
+          html: subHtml[0],
+          options: options,
+          example: id++
+        });
+      }
+
+      for (i = 1; i < l; i += 2) {
+        files.push({
+          section: name,
+          markdown: subMd[i + 1],
+          html: subHtml[i + 1],
+          options: options,
+          example: +subMd[i]
+        });
+      }
+    } else {
+      files.push({
+        section: name,
+        markdown: markdown,
+        html: html,
+        options: options,
+        example: id++
+      });
+    }
   });
+
+  fs.writeFileSync(
+    path.join(__dirname, 'compiled_tests.json'),
+    JSON.stringify(files, null, 2)
+  );
 }
 
 /**
