@@ -33,3 +33,9 @@ ciao
 
 
 ```
+
+With ending fence not on a new line:
+
+```
+code
+.print()```
