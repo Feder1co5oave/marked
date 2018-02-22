@@ -546,8 +546,7 @@ function main(argv) {
   }
 
   if (opt.fix) {
-    // only run fix
-    return;
+    return true;
   }
 
   if (opt.bench) {
