@@ -43,7 +43,8 @@
     "bench": "node test/bench.js",
     "lint": "eslint --fix lib/marked.js test/index.js",
     "build": "uglifyjs lib/marked.js -cm  --comments /Copyright/ -o marked.min.js",
-    "preversion": "npm run build"
+    "preversion": "npm run build",
+    "bundle": "node test --fix && browserify test/browser/test.js -t brfs -o test/browser/bundle.js"
   },
   "engines": {
     "node": ">=0.10.0"
