@@ -166,128 +166,6 @@ function testFile(engine, file, name) {
 }
 
 /**
- * Benchmark a function
- */
-
-function bench(name, files, func) {
-  var start = Date.now(),
-      times = 1000,
-      keys = Object.keys(files),
-      i,
-      l = keys.length,
-      filename,
-      file;
-
-  while (times--) {
-    for (i = 0; i < l; i++) {
-      filename = keys[i];
-      file = files[filename];
-      func(file.text);
-    }
-  }
-
-  console.log('%s completed in %dms.', name, Date.now() - start);
-}
-
-/**
- * Benchmark all engines
- */
-
-function runBench(options) {
-  options = options || {};
-  var files = load(options);
-
-  // Non-GFM, Non-pedantic
-  marked.setOptions({
-    gfm: false,
-    tables: false,
-    breaks: false,
-    pedantic: false,
-    sanitize: false,
-    smartLists: false
-  });
-  if (options.marked) {
-    marked.setOptions(options.marked);
-  }
-  bench('marked', files, marked);
-
-  // GFM
-  marked.setOptions({
-    gfm: true,
-    tables: false,
-    breaks: false,
-    pedantic: false,
-    sanitize: false,
-    smartLists: false
-  });
-  if (options.marked) {
-    marked.setOptions(options.marked);
-  }
-  bench('marked (gfm)', files, marked);
-
-  // Pedantic
-  marked.setOptions({
-    gfm: false,
-    tables: false,
-    breaks: false,
-    pedantic: true,
-    sanitize: false,
-    smartLists: false
-  });
-  if (options.marked) {
-    marked.setOptions(options.marked);
-  }
-  bench('marked (pedantic)', files, marked);
-
-  // showdown
-  try {
-    bench('showdown (reuse converter)', files, (function() {
-      var Showdown = require('showdown');
-      var convert = new Showdown.Converter();
-      return function(text) {
-        return convert.makeHtml(text);
-      };
-    })());
-    bench('showdown (new converter)', files, (function() {
-      var Showdown = require('showdown');
-      return function(text) {
-        var convert = new Showdown.Converter();
-        return convert.makeHtml(text);
-      };
-    })());
-  } catch (e) {
-    console.log('Could not bench showdown. (Error: %s)', e.message);
-  }
-
-  // markdown-it
-  try {
-    bench('markdown-it', files, (function() {
-      var MarkdownIt = require('markdown-it');
-      var md = new MarkdownIt();
-      return function(text) {
-        return md.render(text);
-      };
-    })());
-  } catch (e) {
-    console.log('Could not bench markdown-it. (Error: %s)', e.message);
-  }
-
-  // markdown.js
-  try {
-    bench('markdown.js', files, (function() {
-      var markdown = require('markdown').markdown;
-      return function(text) {
-        return markdown.toHTML(text);
-      };
-    })());
-  } catch (e) {
-    console.log('Could not bench markdown.js. (Error: %s)', e.message);
-  }
-
-  return true;
-}
-
-/**
  * A simple one-time benchmark
  */
 
@@ -481,10 +359,6 @@ function parseArg() {
       case 'no-fix':
         options.fix = false;
         break;
-      case '-b':
-      case '--bench':
-        options.bench = true;
-        break;
       case '-s':
       case '--stop':
         options.stop = true;
@@ -552,10 +426,6 @@ function main(argv) {
     return true;
   }
 
-  if (opt.bench) {
-    return runBench(opt);
-  }
-
   if (opt.time) {
     return time(opt);
   }
@@ -578,8 +448,6 @@ if (!module.parent) {
   exports.main = main;
   exports.runTests = runTests;
   exports.testFile = testFile;
-  exports.runBench = runBench;
   exports.load = load;
-  exports.bench = bench;
   module.exports = exports;
 }
