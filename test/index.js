@@ -61,8 +61,8 @@ function runTests(engine, options) {
       tests = options.files || load(options),
       test,
       testName,
-      len = tests.length,
-      success = true,
+      len,
+      errors = '',
       i,
       index = 1,
       oldSection = tests[0].section;
@@ -71,25 +71,29 @@ function runTests(engine, options) {
     marked.setOptions(options.marked);
   }
 
+  tests.push({section: '', markdown: '', html: '', options: {}, example: 0});
+  len = tests.length;
+
   for (i = 0; i < len; i++) {
     test = tests[i];
-    testName = test.section + (test.example >= 1000 ? '' : '#' + test.example);
+    testName = test.section + '#' + test.example;
     if (test.section !== oldSection) {
-      if (success) {
+      if (!errors) {
         console.log('#%d. %s succeded.', index, oldSection);
         succeeded++;
       } else {
         console.log('#%d. %s failed.', index, oldSection);
+        console.log(errors);
         failed++;
         if (options.stop) {
           break;
         }
       }
       index++;
-      success = true;
+      errors = '';
       oldSection = test.section;
     }
-    success &= testFile(engine, test, testName);
+    errors += testFile(engine, test, testName);
   }
 
   console.log('%d/%d tests completed successfully.', succeeded, index - 1);
@@ -102,7 +106,7 @@ function runTests(engine, options) {
  * Test a file
  */
 
-function testFile(engine, file, filename) {
+function testFile(engine, file, name) {
   var opts = Object.keys(file.options),
       text,
       html,
@@ -131,11 +135,11 @@ function testFile(engine, file, filename) {
     text = engine(file.markdown).replace(/\s/g, '');
     html = file.html.replace(/\s/g, '');
   } catch (e) {
-    console.log('%s failed.', filename);
+    return name + ' failed.';
     throw e;
   }
 
-  if (text === html) return true;
+  if (text === html) return '';
 
   l = html.length;
 
@@ -149,18 +153,16 @@ function testFile(engine, file, filename) {
         Math.max(j - 30, 0),
         Math.min(j + 30, l));
 
-      console.log(
-        '\n    %s failed at offset %d. Near: "%s".',
-        filename, j, text);
+      return ''
+        + '\n    ' + name + ' failed at offset ' + j + '. Near: "' + text + '".\n'
+        + '\n    Got:\n    ' + (text.trim() || text)
+        + '\n    Expected:\n    ' + (html.trim() || html)
+        + '\n';
 
-      console.log('\n    Got:\n    %s', text.trim() || text);
-      console.log('\n    Expected:\n    %s\n', html.trim() || html);
-
-      return false;
     }
   }
 
-  return true
+  return '';
 }
 
 /**
