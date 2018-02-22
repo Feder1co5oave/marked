@@ -440,7 +440,7 @@ function main(argv) {
  * Execute
  */
 
-if (!module.parent) {
+if (require.main === module) {
   process.title = 'marked';
   process.exit(main(process.argv.slice()) ? 0 : 1);
 } else {
