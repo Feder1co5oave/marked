@@ -1,24 +1,30 @@
 ;(function() {
 
-var console = {}
-  , files = __TESTS__;
+var testMod = require('../'),
+    fs = require('fs'),
+    files;
 
-console.log = function(text) {
-  var args = Array.prototype.slice.call(arguments, 1)
-    , i = 0;
+var path = require('path');
 
-  text = text.replace(/%\w/g, function() {
-    return args[i++] || '';
-  });
+if (typeof window !== 'undefined' && window.console) {
+  window.console._log = window.console.log;
+  window.console.log = function(text) {
+    var args = Array.prototype.slice.call(arguments, 1),
+        i = 0;
 
-  if (window.console) window.console.log(text);
-  document.body.innerHTML += '<pre>' + escape(text) + '</pre>';
-};
+    text = text.replace(/%[disoOf]/g, function() {
+      return args[i++] || '';
+    });
+
+    window.console._log(text);
+    document.body.innerHTML += '<pre>' + escape(text) + '</pre>';
+  };
+}
 
 if (!Object.keys) {
   Object.keys = function(obj) {
-    var out = []
-      , key;
+    var out = [],
+        key;
 
     for (key in obj) {
       if (Object.prototype.hasOwnProperty.call(obj, key)) {
@@ -30,23 +36,7 @@ if (!Object.keys) {
   };
 }
 
-if (!Array.prototype.forEach) {
-  Array.prototype.forEach = function(callback, context) {
-    for (var i = 0; i < this.length; i++) {
-      callback.call(context || null, this[i], i, obj);
-    }
-  };
-}
-
-if (!String.prototype.trim) {
-  String.prototype.trim = function() {
-    return this.replace(/^\s+|\s+$/g, '');
-  };
-}
-
-function load() {
-  return files;
-}
+files = fs.readFileSync(path.resolve(__dirname, '../compiled_tests.json'), 'utf8');
 
 function escape(html, encode) {
   return html
@@ -57,8 +47,6 @@ function escape(html, encode) {
     .replace(/'/g, '&#39;');
 }
 
-__LIBS__;
+testMod.runTests({files: testMod.load({json: files})});
 
-(__MAIN__)();
-
-}).call(this);
+})();
