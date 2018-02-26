@@ -263,6 +263,14 @@ function fix() {
     options = markdown.attributes;
     markdown = markdown.body;
 
+    if (options.fixHeadingsId) {
+      delete options.fixHeadingsId;
+      html = html.replace(/<(h[1-6])>([^<]+)<\/\1>/g, function(s, h, text) {
+        var id = text.toLowerCase().replace(/[^\w]+/g, '-');
+        return '<' + h + ' id="' + id + '">' + text + '</' + h + '>';
+      })
+    }
+
     if (/^### Example \d+\n+/m.test(markdown)) {
       subMd = markdown.split(/^### Example (\d+)\n+/m);
       subHtml = html.split(/^<h3 (?:id="example-\d+")?>Example (\d+)<\/h3>\n+/m);
