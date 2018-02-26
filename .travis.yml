@@ -8,14 +8,13 @@ jobs:
     - node_js: lts/*
     - node_js: node
 
-    - stage: it tests
+    - stage: crossbrowser tests
       node_js: lts/*
       script: npm run test_ie
 
     - stage: lint
       node_js: lts/*
       script: npm run test:lint
-
 cache:
   directories:
     - node_modules
