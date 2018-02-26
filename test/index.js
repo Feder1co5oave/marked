@@ -27,9 +27,9 @@ function load(options) {
       files,
       glob = g2r(options.glob || '*', { extended: true });
 
-  files = options.json ?
-    JSON.parse(options.json) :
-    JSON.parse(fs.readFileSync(compiled, 'utf8'));
+  files = options.json
+    ? JSON.parse(options.json)
+    : JSON.parse(fs.readFileSync(compiled, 'utf8'));
 
   if (options.glob) {
     files = files.filter(function(test) {
