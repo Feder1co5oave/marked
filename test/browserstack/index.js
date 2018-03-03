@@ -1,5 +1,6 @@
-var webdriver = require('selenium-webdriver');
-require('../browser');
+var webdriver = require('selenium-webdriver'),
+    needle = require('needle'),
+    server = require('../browser');
 
 // Input capabilities
 var capabilities = {
@@ -21,20 +22,26 @@ var driver = new webdriver.Builder()
   .withCapabilities(capabilities)
   .build();
 
-driver.get('http://localhost:8080').then(function(){
-  driver.findElement(webdriver.By.id('body')).getText().then(function(log){
+driver.get('http://localhost:8080/index.html').then( () => {
+  return driver.findElement(webdriver.By.id('body')).getText().then(log => {
     console.log(log);
-    driver.quit().then(function() {
-      if (/0\/\d+ tests failed\./.test(log)) {
-        process.exit(0);
-      } else {
-        process.exit(1);
-      }
-    });
-  }, function(err) {
-    driver.quit().then(function() {
-      console.error(err);
-      process.exit(-1);
+    return /0\/\d+ tests failed\./.test(log) ? 0 : 1;
+  });
+}).then(status => {
+  driver.session_.then(session => {
+    needle.put(
+      'https://fredsoave1:7jAkFfaCgZKuaoMt1SxW@api.browserstack.com/automate/sessions/' + session.id_ + '.json',
+      { status: status ? 'failed' : 'passed',
+        reason: '' }
+    );
+  }).then( () => {
+    driver.quit().then( () => {
+      process.exit(status);
     })
   });
+}).catch(err => {
+  driver.quit().then( () => {
+    console.error(err);
+    process.exit(-1);
+  })
 });
