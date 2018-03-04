@@ -11,3 +11,9 @@ http.createServer(function(req, res) {
     res.end();
   }
 }).listen(8080);
+
+if (require.main === module) {
+  console.log('Did you remember to `npm run bundle`?')
+  console.log('Browse to http://localhost:8080/index.html to run the test suite.');
+  console.log('Type ^C to exit.')
+}
