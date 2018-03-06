@@ -1,39 +1,19 @@
-var fs = require('fs'),
-    path = require('path');
+var http = require('http'),
+    fs = require('fs');
 
-var testMod = require('../'),
-    load = testMod.load;
+http.createServer(function(req, res) {
+  try {
+    var file = fs.readFileSync(__dirname + req.url);
+    res.writeHead(200);
+    res.end(file);
+  } catch (e) {
+    res.writeHead(404);
+    res.end();
+  }
+}).listen(8080);
 
-var express = require('express'),
-    app = express();
-
-var files = load();
-
-app.use(function(req, res, next) {
-  var setHeader = res.setHeader;
-  res.setHeader = function(name) {
-    switch (name) {
-      case 'Cache-Control':
-      case 'Last-Modified':
-      case 'ETag':
-        return;
-    }
-    return setHeader.apply(res, arguments);
-  };
-  next();
-});
-
-app.get('/test.js', function(req, res, next) {
-  var test = fs.readFileSync(path.join(__dirname, 'test.js'), 'utf8');
-  var testScript = test.replace('__TESTS__', JSON.stringify(files))
-    .replace('__MAIN__', testMod.runTests + '')
-    .replace('__LIBS__', testMod.testFile + '');
-
-  res.contentType('.js');
-  res.send(testScript);
-});
-
-app.use(express.static(path.join(__dirname, '/../../lib')))  ;
-app.use(express.static(__dirname));
-
-app.listen(8080);
+if (require.main === module) {
+  console.log('Did you remember to `npm run bundle`?')
+  console.log('Browse to http://localhost:8080/index.html to run the test suite.');
+  console.log('Type ^C to exit.')
+}
