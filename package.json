@@ -52,6 +52,6 @@
     "test_ie": "npm run bundle && node test/browserstack"
   },
   "engines": {
-    "node": ">=0.10.0"
+    "node": ">=4"
   }
 }
