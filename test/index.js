@@ -99,7 +99,7 @@ function runTests(engine, options) {
   }
 
   console.log('%d/%d tests completed successfully.', succeeded, index - 1);
-  console.log('%d/%d tests failed.', failed, index - 1);
+  console.log(failed + '/%d tests failed.', index - 1);
 
   return !failed;
 }
