@@ -10,6 +10,10 @@ jobs:
     - stage: crossbrowser tests
       node_js: lts/*
       script: npm run test_ie
+      addons:
+        browserstack:
+          username: "fredsoave1"
+          access_key: "7jAkFfaCgZKuaoMt1SxW"
 
     - stage: lint
       node_js: lts/*
@@ -17,7 +21,3 @@ jobs:
 cache:
   directories:
     - node_modules
-addons:
-  browserstack:
-    username: "fredsoave1"
-    access_key: "7jAkFfaCgZKuaoMt1SxW"
