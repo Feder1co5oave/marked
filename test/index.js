@@ -14,9 +14,6 @@ var fs = require('fs'),
     path = require('path'),
     fm = require('front-matter'),
     g2r = require('glob-to-regexp'),
-    HtmlDiffer = require('html-differ').HtmlDiffer,
-    htmlDiffer = new HtmlDiffer(),
-    diffLogger = require('html-differ/lib/logger'),
     marked = require('../'),
     markedMin = require('../marked.min.js');
 
@@ -56,7 +53,7 @@ function load(options) {
 function runTests(engine, options) {
   if (typeof engine !== 'function') {
     options = engine;
-    engine = marked;
+    engine = null;
   }
 
   engine = engine || marked;
@@ -101,7 +98,7 @@ function runTests(engine, options) {
     errors += testFile(engine, test, testName);
   }
 
-  console.log('\n%d/%d tests completed successfully.', succeeded, index - 1);
+  console.log('%d/%d tests completed successfully.', succeeded, index - 1);
   console.log('%d/%d tests failed.', failed, index - 1);
 
   return !failed;
@@ -115,7 +112,8 @@ function testFile(engine, file, name) {
   var opts = Object.keys(file.options),
       text,
       html,
-      diff;
+      j,
+      l;
 
   if (marked._original) {
     marked.defaults = marked._original;
@@ -136,22 +134,52 @@ function testFile(engine, file, name) {
   }
 
   try {
-    text = engine(file.markdown);
-    html = file.html;
+    text = engine(file.markdown).replace(/\s/g, '');
+    html = file.html.replace(/\s/g, '');
   } catch (e) {
     return name + ' failed.';
+    throw e;
   }
 
   if (text === html) return '';
-  diff = htmlDiffer.diffHtml(text, html);
-  if (!htmlDiffer.isEqual(text, html)) {
-    return ''
-      + '\n    ' + name + ' failed.\n'
-      + '\n    ' + diffLogger.getDiffText(diff).substring(1)
-      + '\n';
-  } else {
-    return '';
+
+  l = html.length;
+
+  for (j = 0; j < l; j++) {
+    if (text[j] !== html[j]) {
+      text = text.substring(
+        Math.max(j - 30, 0),
+        Math.min(j + 30, text.length));
+
+      html = html.substring(
+        Math.max(j - 30, 0),
+        Math.min(j + 30, l));
+
+      return ''
+        + '\n    ' + name + ' failed at offset ' + j + '. Near: "' + text + '".\n'
+        + '\n    Got:\n    ' + (text.trim() || text)
+        + '\n    Expected:\n    ' + (html.trim() || html)
+        + '\n';
+
+    }
   }
+
+  return '';
+}
+
+/**
+ * A simple one-time benchmark
+ */
+
+function time(options) {
+  options = options || {};
+  var files = load(options);
+  if (options.marked) {
+    marked.setOptions(options.marked);
+  }
+  bench('marked', files, marked);
+
+  return true;
 }
 
 /**
@@ -166,7 +194,8 @@ function testFile(engine, file, name) {
 
 function fix() {
   var files = [],
-      id = 1000;
+      id = 1000,
+      compiled = path.resolve(__dirname, 'compiled_tests.json');
 
   // parse original tests
   fs.readdirSync(path.resolve(__dirname, 'original')).forEach(function(file) {
@@ -344,6 +373,10 @@ function parseArg() {
       case '--stop':
         options.stop = true;
         break;
+      case '-t':
+      case '--time':
+        options.time = true;
+        break;
       case '-m':
       case '--minified':
         options.minified = true;
@@ -401,6 +434,10 @@ function main(argv) {
 
   if (opt.fix) {
     return true;
+  }
+
+  if (opt.time) {
+    return time(opt);
   }
 
   if (opt.minified) {
