@@ -138,7 +138,6 @@ function testFile(engine, file, name) {
     html = file.html.replace(/\s/g, '');
   } catch (e) {
     return name + ' failed.';
-    throw e;
   }
 
   if (text === html) return '';
@@ -160,26 +159,10 @@ function testFile(engine, file, name) {
         + '\n    Got:\n    ' + (text.trim() || text)
         + '\n    Expected:\n    ' + (html.trim() || html)
         + '\n';
-
     }
   }
 
   return '';
-}
-
-/**
- * A simple one-time benchmark
- */
-
-function time(options) {
-  options = options || {};
-  var files = load(options);
-  if (options.marked) {
-    marked.setOptions(options.marked);
-  }
-  bench('marked', files, marked);
-
-  return true;
 }
 
 /**
@@ -194,8 +177,7 @@ function time(options) {
 
 function fix() {
   var files = [],
-      id = 1000,
-      compiled = path.resolve(__dirname, 'compiled_tests.json');
+      id = 1000;
 
   // parse original tests
   fs.readdirSync(path.resolve(__dirname, 'original')).forEach(function(file) {
@@ -373,10 +355,6 @@ function parseArg() {
       case '--stop':
         options.stop = true;
         break;
-      case '-t':
-      case '--time':
-        options.time = true;
-        break;
       case '-m':
       case '--minified':
         options.minified = true;
@@ -434,10 +412,6 @@ function main(argv) {
 
   if (opt.fix) {
     return true;
-  }
-
-  if (opt.time) {
-    return time(opt);
   }
 
   if (opt.minified) {
