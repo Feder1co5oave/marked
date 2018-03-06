@@ -1,23 +1,24 @@
 language: node_js
-
 jobs:
   include:
     - stage: spec tests
       node_js: v4
     - node_js: lts/*
     - node_js: node
-
     - stage: crossbrowser tests
       node_js: lts/*
       script: npm run test_ie
       addons:
         browserstack:
-          username: "fredsoave1"
-          access_key: "7jAkFfaCgZKuaoMt1SxW"
-
+          username: fredsoave1
+          access_key:
+            secure: NH1+KbcnjSBC+dGBoLFAdVMsWObK0T13Pp9+6feJvV8IISM7CKJyK9JCnJHtHTW6C7vCPgrKFXGxZ0WWa+UPVJ7+yhhzbqBXKbgLAjHXW4FhCb3Ah64XHuYFIEHao8YjC5SpEkK1OaeNS5KMu/+FCLJim2m6UiTxt3L4B1gp7os=
     - stage: lint
       node_js: lts/*
       script: npm run test:lint
 cache:
   directories:
     - node_modules
+env:
+  global:
+    secure: J3Kf5pmJhnBXx/ZFo4ebctvj/W5xxXcGTMDhzTD9L34vZJZZO5xl8JfIZKP2DNoM0t5u6I3cCBUH4F4KEgY+z9vFZFDTalGa9OW5KaqYaVYbMYa8pjcASASLbfgpTid6DUUxxIfRBB0/3A9xtjYkb1Maz0SMqMRy/Q3kXVvDBJM=

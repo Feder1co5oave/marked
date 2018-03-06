@@ -12,7 +12,7 @@ var capabilities = {
  'project': 'marked/' + process.env['TRAVIS_BRANCH'],
  'build': process.env['TRAVIS_JOB_NUMBER'],
  'browserstack.user': 'fredsoave1',
- 'browserstack.key': '7jAkFfaCgZKuaoMt1SxW',
+ 'browserstack.key': process.env['BROWSERSTACK_KEY'],
  'browserstack.local': 'true',
  'browserstack.localIdentifier': process.env['BROWSERSTACK_LOCAL_IDENTIFIER']
 };
@@ -30,7 +30,7 @@ driver.get('http://localhost:8080/index.html').then( () => {
 }).then(status => {
   driver.session_.then(session => {
     needle.put(
-      'https://fredsoave1:7jAkFfaCgZKuaoMt1SxW@api.browserstack.com/automate/sessions/' + session.id_ + '.json',
+      `https://fredsoave1:${process.env['BROWSERSTACK_KEY']}@api.browserstack.com/automate/sessions/${session.id_}.json`,
       { status: status ? 'failed' : 'passed',
         reason: '' }
     );
